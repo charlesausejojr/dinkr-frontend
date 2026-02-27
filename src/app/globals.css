@@ -18,6 +18,12 @@ body {
   color: var(--color-court-slate);
 }
 
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.animate-fade-in { animation: fadeIn 0.15s ease-out; }
+
 .court-bg {
   background-color: #f8f5f0;
   background-image: repeating-linear-gradient(

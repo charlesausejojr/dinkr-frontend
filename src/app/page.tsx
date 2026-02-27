@@ -1,11 +1,13 @@
+'use client';
+
+import { TabShell } from '@/components/layout/TabShell';
+
 export default function Home() {
   return (
-    <div className="court-bg min-h-screen">
-      <div className="flex min-h-screen items-center justify-center">
-        <h1 className="font-display text-4xl font-bold text-court-green">
-          Dinkr
-        </h1>
+    <main className="min-h-screen court-bg">
+      <div className="max-w-6xl mx-auto px-4 py-8">
+        <TabShell />
       </div>
-    </div>
+    </main>
   );
 }

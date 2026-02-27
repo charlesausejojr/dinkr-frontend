@@ -3,6 +3,7 @@ export const TABS = [
   "List a Court",
   "Book a Coach",
   "Become a Coach",
+  "My Bookings",
 ] as const;
 export type TabType = (typeof TABS)[number];
 

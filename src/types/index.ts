@@ -25,10 +25,10 @@ export interface Court {
 export interface Coach {
   id: string;
   name: string;
-  bio: string;
+  bio: string | null;
   rate_per_hour: number;
   specialties: string[];
-  avatar_url: string;
+  avatar_url: string | null;
   user_id: string;
   is_active: boolean;
   created_at: string;
