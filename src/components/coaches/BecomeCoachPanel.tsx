@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useForm, Controller, type Resolver } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
+import { ImageUpload } from '@/components/ui/ImageUpload';
 import { z } from 'zod';
 import { useAuthStore } from '@/store/authStore';
 import { useUIStore } from '@/store/uiStore';
@@ -99,7 +100,18 @@ function CoachForm({
         <p className="text-xs font-body text-court-slate/40">Type a specialty and press <kbd className="px-1.5 py-0.5 bg-gray-100 border border-gray-300 rounded text-[10px] font-mono">Enter</kbd> to add it. Click the × on a tag to remove it.</p>
       </div>
 
-      <Input label="Avatar URL (optional)" placeholder="https://..." error={errors.avatar_url?.message} {...register('avatar_url')} />
+      <Controller
+        control={control}
+        name="avatar_url"
+        render={({ field }) => (
+          <ImageUpload
+            label="Profile Photo (optional)"
+            type="avatar"
+            value={field.value ?? ''}
+            onChange={field.onChange}
+          />
+        )}
+      />
 
       {mutation.isError && (
         <p className="text-sm text-red-500">

@@ -256,7 +256,7 @@ export function BookCourtPanel() {
 
         {loadingEsts ? (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {[1, 2, 3, 4].map((i) => <Skeleton key={i} className="h-52" />)}
+            {[1, 2, 3, 4].map((i) => <Skeleton key={i} className="h-72" />)}
           </div>
         ) : !establishments?.length ? (
           <div className="text-center py-16 text-court-slate/40 font-body">
@@ -295,7 +295,7 @@ export function BookCourtPanel() {
 
         {loadingEst ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {[1, 2, 3].map((i) => <Skeleton key={i} className="h-36" />)}
+            {[1, 2, 3].map((i) => <Skeleton key={i} className="h-56" />)}
           </div>
         ) : !courts.length ? (
           <div className="text-center py-16 text-court-slate/40 font-body">No active courts at this venue.</div>

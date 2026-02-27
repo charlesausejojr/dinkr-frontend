@@ -18,6 +18,7 @@ import { api } from '@/lib/api';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { TagInput } from '@/components/ui/TagInput';
+import { ImageUpload } from '@/components/ui/ImageUpload';
 import type { Establishment, Court } from '@/types';
 
 // ── Schemas ───────────────────────────────────────────────────────────────────
@@ -34,6 +35,7 @@ const courtSchema = z.object({
   price_per_hour: z.coerce.number().positive('Must be positive'),
   surface_type: z.string().optional(),
   description: z.string().optional(),
+  image_url: z.string().optional(),
 });
 
 type EstForm = z.infer<typeof estSchema>;
@@ -54,13 +56,14 @@ function CourtEditForm({ court, estId, onDone }: { court: Court; estId: string; 
     },
   });
 
-  const { register, handleSubmit, formState: { errors } } = useForm<CourtForm>({
+  const { register, handleSubmit, control, formState: { errors } } = useForm<CourtForm>({
     resolver: zodResolver(courtSchema) as Resolver<CourtForm>,
     defaultValues: {
       name: court.name,
       price_per_hour: court.price_per_hour,
       surface_type: court.surface_type ?? '',
       description: court.description ?? '',
+      image_url: court.image_url ?? '',
     },
   });
 
@@ -79,6 +82,15 @@ function CourtEditForm({ court, estId, onDone }: { court: Court; estId: string; 
         </select>
       </div>
       <Input label="Description" {...register('description')} />
+      <div className="col-span-2">
+        <Controller
+          control={control}
+          name="image_url"
+          render={({ field }) => (
+            <ImageUpload label="Court Photo" type="photo" value={field.value ?? ''} onChange={field.onChange} />
+          )}
+        />
+      </div>
       {update.isError && (
         <p className="col-span-2 text-xs text-red-500">Failed to update court.</p>
       )}
@@ -130,12 +142,12 @@ function CourtRow({ court, estId }: { court: Court; estId: string }) {
 // ── Add court inline form ─────────────────────────────────────────────────────
 function AddCourtForm({ estId, courtCount }: { estId: string; courtCount: number }) {
   const addCourt = useAddCourt(estId);
-  const { register, handleSubmit, reset, formState: { errors } } = useForm<CourtForm>({
+  const { register, handleSubmit, control, reset, formState: { errors } } = useForm<CourtForm>({
     resolver: zodResolver(courtSchema) as Resolver<CourtForm>,
-    defaultValues: { name: `Court ${courtCount + 1}` },
+    defaultValues: { name: `Court ${courtCount + 1}`, image_url: '' },
   });
   const onSubmit = (data: CourtForm) => {
-    addCourt.mutate(data, { onSuccess: () => reset({ name: '' }) });
+    addCourt.mutate(data, { onSuccess: () => reset({ name: '', image_url: '' }) });
   };
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="grid grid-cols-2 gap-3 mt-3">
@@ -152,6 +164,15 @@ function AddCourtForm({ estId, courtCount }: { estId: string; courtCount: number
         </select>
       </div>
       <Input label="Description (optional)" {...register('description')} />
+      <div className="col-span-2">
+        <Controller
+          control={control}
+          name="image_url"
+          render={({ field }) => (
+            <ImageUpload label="Court Photo" type="photo" value={field.value ?? ''} onChange={field.onChange} />
+          )}
+        />
+      </div>
       <div className="col-span-2">
         <Button type="submit" variant="secondary" size="sm" loading={addCourt.isPending}>
           + Add Court
@@ -200,6 +221,18 @@ function EstEditForm({ est, onDone }: { est: Establishment; onDone: () => void }
         />
         <p className="text-xs font-body text-court-slate/40">Type an amenity and press <kbd className="px-1.5 py-0.5 bg-gray-100 border border-gray-300 rounded text-[10px] font-mono">Enter</kbd> to add it. Click the × on a tag to remove it.</p>
       </div>
+      <Controller
+        control={control}
+        name="images"
+        render={({ field }) => (
+          <ImageUpload
+            label="Venue Cover Photo"
+            type="photo"
+            value={field.value?.[0] ?? ''}
+            onChange={url => field.onChange(url ? [url] : [])}
+          />
+        )}
+      />
       {update.isError && (
         <p className="text-xs text-red-500">Failed to update venue.</p>
       )}
@@ -337,6 +370,18 @@ function CreateEstForm({ onCreated }: { onCreated: (est: Establishment) => void 
         />
         <p className="text-xs font-body text-court-slate/40">Type an amenity and press <kbd className="px-1.5 py-0.5 bg-gray-100 border border-gray-300 rounded text-[10px] font-mono">Enter</kbd> to add it. Click the × on a tag to remove it.</p>
       </div>
+      <Controller
+        control={control}
+        name="images"
+        render={({ field }) => (
+          <ImageUpload
+            label="Venue Cover Photo"
+            type="photo"
+            value={field.value?.[0] ?? ''}
+            onChange={url => field.onChange(url ? [url] : [])}
+          />
+        )}
+      />
       {createEst.isError && (
         <p className="text-sm text-red-500">
           {(createEst.error as { response?: { data?: { detail?: string } } })?.response?.data?.detail ?? 'Failed to create establishment'}
@@ -355,14 +400,14 @@ function AddCourtsForm({ establishment, onDone }: { establishment: Establishment
   const { data: full } = useEstablishment(establishment.id);
   const courts = (full?.courts ?? []).filter(c => c.is_active);
 
-  const { register, handleSubmit, reset, formState: { errors } } = useForm<CourtForm>({
+  const { register, handleSubmit, control, reset, formState: { errors } } = useForm<CourtForm>({
     resolver: zodResolver(courtSchema) as Resolver<CourtForm>,
-    defaultValues: { name: `Court ${courts.length + 1}` },
+    defaultValues: { name: `Court ${courts.length + 1}`, image_url: '' },
   });
 
   const onSubmit = (data: CourtForm) => {
     addCourt.mutate(data, {
-      onSuccess: () => reset({ name: `Court ${courts.length + 2}` }),
+      onSuccess: () => reset({ name: `Court ${courts.length + 2}`, image_url: '' }),
     });
   };
 
@@ -402,6 +447,15 @@ function AddCourtsForm({ establishment, onDone }: { establishment: Establishment
           </select>
         </div>
         <Input label="Description (optional)" {...register('description')} />
+        <div className="col-span-2">
+          <Controller
+            control={control}
+            name="image_url"
+            render={({ field }) => (
+              <ImageUpload label="Court Photo" type="photo" value={field.value ?? ''} onChange={field.onChange} />
+            )}
+          />
+        </div>
         <div className="col-span-2 flex gap-3">
           <Button type="submit" variant="secondary" loading={addCourt.isPending}>
             + Add Court

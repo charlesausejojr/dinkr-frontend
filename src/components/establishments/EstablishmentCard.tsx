@@ -15,16 +15,33 @@ export function EstablishmentCard({ establishment, onSelect, selected }: Props) 
   const courtCount = establishment.courts?.length ?? 0;
   const visibleAmenities = establishment.amenities.slice(0, 3);
   const extraAmenities = establishment.amenities.length - 3;
+  const coverImage = establishment.images?.[0] ?? null;
 
   return (
     <div
       className={cn(
-        'bg-white rounded-sm border-2 p-5 flex flex-col gap-4 transition-all duration-150',
+        'bg-white rounded-sm border-2 flex flex-col transition-all duration-150 overflow-hidden',
         selected
           ? 'border-court-lime bg-court-green/5'
           : 'border-gray-200 hover:border-court-green/30'
       )}
     >
+      {/* Cover image */}
+      {coverImage ? (
+        <div className="w-full h-36 overflow-hidden bg-gray-100 shrink-0">
+          <img
+            src={coverImage}
+            alt={establishment.name}
+            className="w-full h-full object-cover"
+          />
+        </div>
+      ) : (
+        <div className="w-full h-36 bg-gradient-to-br from-court-green/10 to-court-lime/10 flex items-center justify-center shrink-0">
+          <MapPin size={28} className="text-court-green/20" />
+        </div>
+      )}
+
+      <div className="p-5 flex flex-col gap-4 flex-1">
       {/* Header */}
       <div className="flex items-start justify-between gap-2">
         <h3 className="font-display text-xl font-bold uppercase tracking-tight text-court-green leading-tight">
@@ -77,6 +94,7 @@ export function EstablishmentCard({ establishment, onSelect, selected }: Props) 
       >
         {selected ? 'Selected ✓' : 'View Courts →'}
       </Button>
+      </div>
     </div>
   );
 }
