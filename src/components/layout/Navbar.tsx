@@ -1,8 +1,9 @@
-'use client';
+"use client";
 
-import { useAuthStore } from '@/store/authStore';
-import { useUIStore } from '@/store/uiStore';
-import { Button } from '@/components/ui/Button';
+import Image from "next/image";
+import { useAuthStore } from "@/store/authStore";
+import { useUIStore } from "@/store/uiStore";
+import { Button } from "@/components/ui/Button";
 
 export function Navbar() {
   const { user, clearAuth, isAuthenticated } = useAuthStore();
@@ -11,11 +12,20 @@ export function Navbar() {
   return (
     <nav className="sticky top-0 z-30 bg-court-green text-white px-6 py-3 flex items-center justify-between shadow-md">
       {/* Logo */}
-      <div className="flex items-center gap-2 cursor-pointer" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>
+      <div
+        className="flex items-center gap-2 cursor-pointer"
+        onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
+      >
+        <Image
+          src="/DINKR_LOGO.png"
+          alt="Dinkr"
+          width={32}
+          height={32}
+          className="rounded-full"
+        />
         <span className="font-display text-2xl font-bold tracking-widest uppercase">
           Dinkr
         </span>
-        <span className="w-2 h-2 rounded-full bg-court-lime" />
       </div>
 
       {/* Auth controls */}
