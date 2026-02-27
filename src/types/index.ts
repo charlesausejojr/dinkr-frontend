@@ -6,6 +6,8 @@ export interface Establishment {
   description: string | null;
   amenities: string[];
   images: string[];
+  open_time: string;
+  close_time: string;
   is_active: boolean;
   created_at: string;
   courts?: Court[];

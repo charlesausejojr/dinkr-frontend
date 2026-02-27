@@ -59,9 +59,8 @@ export function ImageUpload({
       const res = await api.post(`/upload/${type}`, form, {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
-      // Prefix with API base so the URL works everywhere
-      const base = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
-      onChange(`${base}${res.data.url}`);
+      // Cloudinary returns a full https:// URL — use it directly
+      onChange(res.data.url);
     } catch (err: unknown) {
       const detail =
         (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail;

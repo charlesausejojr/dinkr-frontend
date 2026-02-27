@@ -22,12 +22,16 @@ import { ImageUpload } from '@/components/ui/ImageUpload';
 import type { Establishment, Court } from '@/types';
 
 // ── Schemas ───────────────────────────────────────────────────────────────────
+const HOURS = Array.from({ length: 24 }, (_, i) => `${String(i + 1).padStart(2, '0')}:00`);
+
 const estSchema = z.object({
   name: z.string().min(2, 'Name required'),
   location: z.string().min(2, 'Location required'),
   description: z.string().optional(),
   amenities: z.array(z.string()).default([]),
   images: z.array(z.string()).default([]),
+  open_time: z.string().default('06:00'),
+  close_time: z.string().default('22:00'),
 });
 
 const courtSchema = z.object({
@@ -193,6 +197,8 @@ function EstEditForm({ est, onDone }: { est: Establishment; onDone: () => void }
       description: est.description ?? '',
       amenities: est.amenities,
       images: est.images,
+      open_time: est.open_time ?? '06:00',
+      close_time: est.close_time ?? '22:00',
     },
   });
 
@@ -220,6 +226,26 @@ function EstEditForm({ est, onDone }: { est: Establishment; onDone: () => void }
           )}
         />
         <p className="text-xs font-body text-court-slate/40">Type an amenity and press <kbd className="px-1.5 py-0.5 bg-gray-100 border border-gray-300 rounded text-[10px] font-mono">Enter</kbd> to add it. Click the × on a tag to remove it.</p>
+      </div>
+      <div className="grid grid-cols-2 gap-3">
+        <div className="flex flex-col gap-1">
+          <label className="text-xs font-display font-semibold tracking-widest uppercase text-court-slate">Opens At</label>
+          <select
+            {...register('open_time')}
+            className="px-4 py-2.5 border-2 border-gray-200 focus:border-court-green rounded-sm outline-none font-body text-sm bg-white"
+          >
+            {HOURS.map(h => <option key={h} value={h}>{h}</option>)}
+          </select>
+        </div>
+        <div className="flex flex-col gap-1">
+          <label className="text-xs font-display font-semibold tracking-widest uppercase text-court-slate">Closes At</label>
+          <select
+            {...register('close_time')}
+            className="px-4 py-2.5 border-2 border-gray-200 focus:border-court-green rounded-sm outline-none font-body text-sm bg-white"
+          >
+            {HOURS.map(h => <option key={h} value={h}>{h}</option>)}
+          </select>
+        </div>
       </div>
       <Controller
         control={control}
@@ -335,7 +361,7 @@ function CreateEstForm({ onCreated }: { onCreated: (est: Establishment) => void 
   const createEst = useCreateEstablishment();
   const { register, handleSubmit, control, formState: { errors } } = useForm<EstForm>({
     resolver: zodResolver(estSchema) as Resolver<EstForm>,
-    defaultValues: { amenities: [], images: [] },
+    defaultValues: { amenities: [], images: [], open_time: '06:00', close_time: '22:00' },
   });
 
   const onSubmit = (data: EstForm) => {
@@ -369,6 +395,26 @@ function CreateEstForm({ onCreated }: { onCreated: (est: Establishment) => void 
           )}
         />
         <p className="text-xs font-body text-court-slate/40">Type an amenity and press <kbd className="px-1.5 py-0.5 bg-gray-100 border border-gray-300 rounded text-[10px] font-mono">Enter</kbd> to add it. Click the × on a tag to remove it.</p>
+      </div>
+      <div className="grid grid-cols-2 gap-4">
+        <div className="flex flex-col gap-1">
+          <label className="text-xs font-display font-semibold tracking-widest uppercase text-court-slate">Opens At</label>
+          <select
+            {...register('open_time')}
+            className="px-4 py-2.5 border-2 border-gray-200 focus:border-court-green rounded-sm outline-none font-body text-sm bg-white"
+          >
+            {HOURS.map(h => <option key={h} value={h}>{h}</option>)}
+          </select>
+        </div>
+        <div className="flex flex-col gap-1">
+          <label className="text-xs font-display font-semibold tracking-widest uppercase text-court-slate">Closes At</label>
+          <select
+            {...register('close_time')}
+            className="px-4 py-2.5 border-2 border-gray-200 focus:border-court-green rounded-sm outline-none font-body text-sm bg-white"
+          >
+            {HOURS.map(h => <option key={h} value={h}>{h}</option>)}
+          </select>
+        </div>
       </div>
       <Controller
         control={control}
