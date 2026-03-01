@@ -1,3 +1,11 @@
+export interface DaySchedule {
+  open: string;
+  close: string;
+  closed: boolean;
+}
+
+export type WeekSchedule = Record<string, DaySchedule>;
+
 export interface Establishment {
   id: string;
   owner_id: string;
@@ -6,8 +14,7 @@ export interface Establishment {
   description: string | null;
   amenities: string[];
   images: string[];
-  open_time: string;
-  close_time: string;
+  schedule: WeekSchedule;
   is_active: boolean;
   created_at: string;
   courts?: Court[];
@@ -32,6 +39,7 @@ export interface Coach {
   rate_per_hour: number;
   specialties: string[];
   avatar_url: string | null;
+  schedule: WeekSchedule;
   user_id: string;
   is_active: boolean;
   created_at: string;

@@ -3,7 +3,9 @@
 import { useState, useEffect } from 'react';
 import { useForm, Controller, type Resolver } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
+import { ChevronDown } from 'lucide-react';
 import { ImageUpload } from '@/components/ui/ImageUpload';
+import { WeeklySchedule } from '@/components/ui/WeeklySchedule';
 import { z } from 'zod';
 import { useAuthStore } from '@/store/authStore';
 import { useUIStore } from '@/store/uiStore';
@@ -11,7 +13,69 @@ import { useMyCoachProfile, useCreateCoach, useUpdateCoach } from '@/hooks/useCo
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { TagInput } from '@/components/ui/TagInput';
+import { cn } from '@/lib/utils';
 import type { Coach } from '@/types';
+
+const HOURS = Array.from({ length: 24 }, (_, i) => `${String(i + 1).padStart(2, '0')}:00`);
+const DAYS = ['monday','tuesday','wednesday','thursday','friday','saturday','sunday'] as const;
+const DAY_LABELS: Record<string, string> = {
+  monday:'Mon', tuesday:'Tue', wednesday:'Wed', thursday:'Thu',
+  friday:'Fri', saturday:'Sat', sunday:'Sun',
+};
+const DEFAULT_SCHEDULE = Object.fromEntries(
+  DAYS.map(d => [d, { open: '06:00', close: '22:00', closed: false }])
+);
+
+// Reusable schedule editor (same pattern as establishment)
+function ScheduleEditor({
+  value,
+  onChange,
+}: {
+  value: Record<string, { open: string; close: string; closed: boolean }>;
+  onChange: (v: Record<string, { open: string; close: string; closed: boolean }>) => void;
+}) {
+  const update = (day: string, field: string, val: string | boolean) =>
+    onChange({ ...value, [day]: { ...value[day], [field]: val } });
+
+  return (
+    <div className="flex flex-col gap-0 border-2 border-gray-200 rounded-sm overflow-hidden">
+      {DAYS.map((day, i) => {
+        const raw = value[day] ?? { open: '06:00', close: '22:00', closed: false };
+        const s = { ...raw, closed: raw.closed === true || (raw.closed as unknown) === 'true' };
+        return (
+          <div key={day} className={`flex items-center gap-3 px-3 py-2 ${i !== DAYS.length - 1 ? 'border-b border-gray-100' : ''} ${s.closed ? 'bg-gray-50' : 'bg-white'}`}>
+            <span className="w-8 text-xs font-display font-bold uppercase tracking-widest text-court-slate shrink-0">
+              {DAY_LABELS[day]}
+            </span>
+            <button
+              type="button"
+              onClick={() => update(day, 'closed', !s.closed)}
+              className={`relative inline-flex w-9 h-5 rounded-full transition-colors duration-200 shrink-0 ${s.closed ? 'bg-gray-300' : 'bg-court-lime'}`}
+            >
+              <span className={`absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform duration-200 ${s.closed ? 'translate-x-0' : 'translate-x-4'}`} />
+            </button>
+            <span className={`text-xs font-body w-16 shrink-0 ${s.closed ? 'text-gray-400' : 'text-court-green font-semibold'}`}>
+              {s.closed ? 'Unavailable' : 'Available'}
+            </span>
+            {!s.closed ? (
+              <div className="flex items-center gap-2 flex-1">
+                <select value={s.open} onChange={e => update(day, 'open', e.target.value)} className="flex-1 px-2 py-1 border border-gray-200 rounded-sm text-xs font-body bg-white focus:border-court-green outline-none">
+                  {HOURS.map(h => <option key={h} value={h}>{h}</option>)}
+                </select>
+                <span className="text-xs text-gray-400">–</span>
+                <select value={s.close} onChange={e => update(day, 'close', e.target.value)} className="flex-1 px-2 py-1 border border-gray-200 rounded-sm text-xs font-body bg-white focus:border-court-green outline-none">
+                  {HOURS.map(h => <option key={h} value={h}>{h}</option>)}
+                </select>
+              </div>
+            ) : (
+              <span className="text-xs text-gray-300 font-body flex-1">—</span>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
 
 const schema = z.object({
   name: z.string().min(2, 'Name required'),
@@ -19,6 +83,7 @@ const schema = z.object({
   rate_per_hour: z.coerce.number().positive('Must be positive'),
   specialties: z.array(z.string()).default([]),
   avatar_url: z.string().url('Must be a valid URL').optional().or(z.literal('')),
+  schedule: z.any(),
 });
 
 type FormData = z.infer<typeof schema>;
@@ -42,6 +107,7 @@ function CoachForm({
       rate_per_hour: existing?.rate_per_hour ?? 0,
       specialties: existing?.specialties ?? [],
       avatar_url: existing?.avatar_url ?? '',
+      schedule: existing?.schedule ?? DEFAULT_SCHEDULE,
     },
   });
 
@@ -53,6 +119,7 @@ function CoachForm({
         rate_per_hour: existing.rate_per_hour,
         specialties: existing.specialties,
         avatar_url: existing.avatar_url ?? '',
+        schedule: existing.schedule ?? DEFAULT_SCHEDULE,
       });
     }
   }, [existing, reset]);
@@ -113,6 +180,20 @@ function CoachForm({
         )}
       />
 
+      <div className="flex flex-col gap-1.5">
+        <label className="text-xs font-display font-semibold tracking-widest uppercase text-court-slate">
+          My Availability
+        </label>
+        <Controller
+          control={control}
+          name="schedule"
+          render={({ field }) => (
+            <ScheduleEditor value={field.value ?? DEFAULT_SCHEDULE} onChange={field.onChange} />
+          )}
+        />
+        <p className="text-xs font-body text-court-slate/40">Set which days and hours you are available for bookings.</p>
+      </div>
+
       {mutation.isError && (
         <p className="text-sm text-red-500">
           {(mutation.error as { response?: { data?: { detail?: string } } })?.response?.data?.detail ?? 'Something went wrong'}
@@ -127,6 +208,7 @@ function CoachForm({
 }
 
 function ExistingProfile({ profile, onEdit }: { profile: Coach; onEdit: () => void }) {
+  const [hoursOpen, setHoursOpen] = useState(false);
   return (
     <div className="max-w-lg border-2 border-court-lime rounded-sm bg-white p-6 flex flex-col gap-4">
       <div className="flex items-start gap-4">
@@ -161,6 +243,25 @@ function ExistingProfile({ profile, onEdit }: { profile: Coach; onEdit: () => vo
           ))}
         </div>
       )}
+
+      {/* Availability schedule — collapsible */}
+      <div className="flex flex-col gap-1.5">
+        <button
+          type="button"
+          onClick={() => setHoursOpen(o => !o)}
+          className="flex items-center justify-between w-full text-xs font-display font-semibold tracking-widest uppercase text-court-slate/50 hover:text-court-green transition-colors"
+        >
+          <span>My Availability</span>
+          <ChevronDown size={14} className={cn('transition-transform duration-200', hoursOpen && 'rotate-180')} />
+        </button>
+        {hoursOpen && (
+          <WeeklySchedule
+            schedule={profile.schedule}
+            closedLabel="Unavailable"
+            emptyLabel="No availability set yet."
+          />
+        )}
+      </div>
 
       <Button variant="ghost" size="sm" className="self-start" onClick={onEdit}>
         Edit Listing

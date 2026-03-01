@@ -19,10 +19,26 @@ import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { TagInput } from '@/components/ui/TagInput';
 import { ImageUpload } from '@/components/ui/ImageUpload';
+import { MultiImageUpload } from '@/components/ui/MultiImageUpload';
 import type { Establishment, Court } from '@/types';
 
 // ── Schemas ───────────────────────────────────────────────────────────────────
 const HOURS = Array.from({ length: 24 }, (_, i) => `${String(i + 1).padStart(2, '0')}:00`);
+const DAYS = ['monday','tuesday','wednesday','thursday','friday','saturday','sunday'] as const;
+const DAY_LABELS: Record<string, string> = {
+  monday:'Mon', tuesday:'Tue', wednesday:'Wed', thursday:'Thu',
+  friday:'Fri', saturday:'Sat', sunday:'Sun',
+};
+
+const dayScheduleSchema = z.object({
+  open: z.string(),
+  close: z.string(),
+  closed: z.boolean(),
+});
+
+const DEFAULT_SCHEDULE = Object.fromEntries(
+  DAYS.map(d => [d, { open: '06:00', close: '22:00', closed: false }])
+);
 
 const estSchema = z.object({
   name: z.string().min(2, 'Name required'),
@@ -30,8 +46,8 @@ const estSchema = z.object({
   description: z.string().optional(),
   amenities: z.array(z.string()).default([]),
   images: z.array(z.string()).default([]),
-  open_time: z.string().default('06:00'),
-  close_time: z.string().default('22:00'),
+  // Managed by a fully-controlled custom component; bypass Zod's strict nested validation
+  schedule: z.any(),
 });
 
 const courtSchema = z.object({
@@ -46,6 +62,74 @@ type EstForm = z.infer<typeof estSchema>;
 type CourtForm = z.infer<typeof courtSchema>;
 
 const SURFACE_TYPES = ['Indoor', 'Outdoor', 'Hardcourt', 'Grass'];
+
+// ── Weekly schedule editor ────────────────────────────────────────────────────
+function ScheduleEditor({
+  value,
+  onChange,
+}: {
+  value: Record<string, { open: string; close: string; closed: boolean }>;
+  onChange: (v: Record<string, { open: string; close: string; closed: boolean }>) => void;
+}) {
+  const update = (day: string, field: string, val: string | boolean) =>
+    onChange({ ...value, [day]: { ...value[day], [field]: val } });
+
+  return (
+    <div className="flex flex-col gap-0 border-2 border-gray-200 rounded-sm overflow-hidden">
+      {DAYS.map((day, i) => {
+        const raw = value[day] ?? { open: '06:00', close: '22:00', closed: false };
+        // Coerce `closed` to a real boolean — API may return it as a string in edge cases
+        const s = { ...raw, closed: raw.closed === true || (raw.closed as unknown) === 'true' };
+        return (
+          <div
+            key={day}
+            className={`flex items-center gap-3 px-3 py-2 ${i !== DAYS.length - 1 ? 'border-b border-gray-100' : ''} ${s.closed ? 'bg-gray-50' : 'bg-white'}`}
+          >
+            {/* Day label */}
+            <span className="w-8 text-xs font-display font-bold uppercase tracking-widest text-court-slate shrink-0">
+              {DAY_LABELS[day]}
+            </span>
+
+            {/* Open/Closed toggle */}
+            <button
+              type="button"
+              onClick={() => update(day, 'closed', !s.closed)}
+              className={`relative inline-flex w-9 h-5 rounded-full transition-colors duration-200 shrink-0 ${s.closed ? 'bg-gray-300' : 'bg-court-lime'}`}
+            >
+              <span className={`absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform duration-200 ${s.closed ? 'translate-x-0' : 'translate-x-4'}`} />
+            </button>
+            <span className={`text-xs font-body w-12 shrink-0 ${s.closed ? 'text-gray-400' : 'text-court-green font-semibold'}`}>
+              {s.closed ? 'Closed' : 'Open'}
+            </span>
+
+            {/* Time selects */}
+            {!s.closed ? (
+              <div className="flex items-center gap-2 flex-1">
+                <select
+                  value={s.open}
+                  onChange={e => update(day, 'open', e.target.value)}
+                  className="flex-1 px-2 py-1 border border-gray-200 rounded-sm text-xs font-body bg-white focus:border-court-green outline-none"
+                >
+                  {HOURS.map(h => <option key={h} value={h}>{h}</option>)}
+                </select>
+                <span className="text-xs text-gray-400">–</span>
+                <select
+                  value={s.close}
+                  onChange={e => update(day, 'close', e.target.value)}
+                  className="flex-1 px-2 py-1 border border-gray-200 rounded-sm text-xs font-body bg-white focus:border-court-green outline-none"
+                >
+                  {HOURS.map(h => <option key={h} value={h}>{h}</option>)}
+                </select>
+              </div>
+            ) : (
+              <span className="text-xs text-gray-300 font-body flex-1">—</span>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
 
 // ── Inline court edit form ────────────────────────────────────────────────────
 function CourtEditForm({ court, estId, onDone }: { court: Court; estId: string; onDone: () => void }) {
@@ -197,8 +281,7 @@ function EstEditForm({ est, onDone }: { est: Establishment; onDone: () => void }
       description: est.description ?? '',
       amenities: est.amenities,
       images: est.images,
-      open_time: est.open_time ?? '06:00',
-      close_time: est.close_time ?? '22:00',
+      schedule: est.schedule ?? DEFAULT_SCHEDULE,
     },
   });
 
@@ -227,35 +310,24 @@ function EstEditForm({ est, onDone }: { est: Establishment; onDone: () => void }
         />
         <p className="text-xs font-body text-court-slate/40">Type an amenity and press <kbd className="px-1.5 py-0.5 bg-gray-100 border border-gray-300 rounded text-[10px] font-mono">Enter</kbd> to add it. Click the × on a tag to remove it.</p>
       </div>
-      <div className="grid grid-cols-2 gap-3">
-        <div className="flex flex-col gap-1">
-          <label className="text-xs font-display font-semibold tracking-widest uppercase text-court-slate">Opens At</label>
-          <select
-            {...register('open_time')}
-            className="px-4 py-2.5 border-2 border-gray-200 focus:border-court-green rounded-sm outline-none font-body text-sm bg-white"
-          >
-            {HOURS.map(h => <option key={h} value={h}>{h}</option>)}
-          </select>
-        </div>
-        <div className="flex flex-col gap-1">
-          <label className="text-xs font-display font-semibold tracking-widest uppercase text-court-slate">Closes At</label>
-          <select
-            {...register('close_time')}
-            className="px-4 py-2.5 border-2 border-gray-200 focus:border-court-green rounded-sm outline-none font-body text-sm bg-white"
-          >
-            {HOURS.map(h => <option key={h} value={h}>{h}</option>)}
-          </select>
-        </div>
+      <div className="flex flex-col gap-1">
+        <label className="text-xs font-display font-semibold tracking-widest uppercase text-court-slate">Weekly Hours</label>
+        <Controller
+          control={control}
+          name="schedule"
+          render={({ field }) => (
+            <ScheduleEditor value={field.value} onChange={field.onChange} />
+          )}
+        />
       </div>
       <Controller
         control={control}
         name="images"
         render={({ field }) => (
-          <ImageUpload
-            label="Venue Cover Photo"
-            type="photo"
-            value={field.value?.[0] ?? ''}
-            onChange={url => field.onChange(url ? [url] : [])}
+          <MultiImageUpload
+            label="Venue Photos"
+            value={field.value ?? []}
+            onChange={field.onChange}
           />
         )}
       />
@@ -361,7 +433,7 @@ function CreateEstForm({ onCreated }: { onCreated: (est: Establishment) => void 
   const createEst = useCreateEstablishment();
   const { register, handleSubmit, control, formState: { errors } } = useForm<EstForm>({
     resolver: zodResolver(estSchema) as Resolver<EstForm>,
-    defaultValues: { amenities: [], images: [], open_time: '06:00', close_time: '22:00' },
+    defaultValues: { amenities: [], images: [], schedule: DEFAULT_SCHEDULE },
   });
 
   const onSubmit = (data: EstForm) => {
@@ -396,35 +468,24 @@ function CreateEstForm({ onCreated }: { onCreated: (est: Establishment) => void 
         />
         <p className="text-xs font-body text-court-slate/40">Type an amenity and press <kbd className="px-1.5 py-0.5 bg-gray-100 border border-gray-300 rounded text-[10px] font-mono">Enter</kbd> to add it. Click the × on a tag to remove it.</p>
       </div>
-      <div className="grid grid-cols-2 gap-4">
-        <div className="flex flex-col gap-1">
-          <label className="text-xs font-display font-semibold tracking-widest uppercase text-court-slate">Opens At</label>
-          <select
-            {...register('open_time')}
-            className="px-4 py-2.5 border-2 border-gray-200 focus:border-court-green rounded-sm outline-none font-body text-sm bg-white"
-          >
-            {HOURS.map(h => <option key={h} value={h}>{h}</option>)}
-          </select>
-        </div>
-        <div className="flex flex-col gap-1">
-          <label className="text-xs font-display font-semibold tracking-widest uppercase text-court-slate">Closes At</label>
-          <select
-            {...register('close_time')}
-            className="px-4 py-2.5 border-2 border-gray-200 focus:border-court-green rounded-sm outline-none font-body text-sm bg-white"
-          >
-            {HOURS.map(h => <option key={h} value={h}>{h}</option>)}
-          </select>
-        </div>
+      <div className="flex flex-col gap-1">
+        <label className="text-xs font-display font-semibold tracking-widest uppercase text-court-slate">Weekly Hours</label>
+        <Controller
+          control={control}
+          name="schedule"
+          render={({ field }) => (
+            <ScheduleEditor value={field.value} onChange={field.onChange} />
+          )}
+        />
       </div>
       <Controller
         control={control}
         name="images"
         render={({ field }) => (
-          <ImageUpload
-            label="Venue Cover Photo"
-            type="photo"
-            value={field.value?.[0] ?? ''}
-            onChange={url => field.onChange(url ? [url] : [])}
+          <MultiImageUpload
+            label="Venue Photos"
+            value={field.value ?? []}
+            onChange={field.onChange}
           />
         )}
       />

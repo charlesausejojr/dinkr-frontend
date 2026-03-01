@@ -9,13 +9,9 @@ import { useUIStore } from '@/store/uiStore';
 import { CoachCard } from '@/components/coaches/CoachCard';
 import { Button } from '@/components/ui/Button';
 import { BookingConfirmedModal } from '@/components/ui/BookingConfirmedModal';
+import { WeeklySchedule } from '@/components/ui/WeeklySchedule';
 import { cn } from '@/lib/utils';
 import type { Coach } from '@/types';
-
-const TIME_SLOTS = [
-  '06:00','07:00','08:00','09:00','10:00','11:00','12:00',
-  '13:00','14:00','15:00','16:00','17:00','18:00','19:00','20:00','21:00',
-];
 
 function toMinutes(t: string) {
   const [h, m] = t.split(':').map(Number);
@@ -43,9 +39,13 @@ function CoachBookingForm({ coach }: { coach: Coach }) {
 
   const { data: availability, isLoading } = useCoachAvailability(coach.id, date);
 
-  const startIdx = startTime ? TIME_SLOTS.indexOf(startTime) : -1;
-  const endOptions = startTime
-    ? TIME_SLOTS.slice(startIdx + 1)
+  const isClosed: boolean = availability?.closed === true;
+  const slots: { start_time: string; end_time: string; is_available: boolean }[] = availability?.slots ?? [];
+
+  const startIdx = startTime ? slots.findIndex(s => s.start_time === startTime) : -1;
+  // Include the selected slot's own end_time so 1-hour bookings are possible
+  const endOptions = startTime && startIdx !== -1
+    ? slots.slice(startIdx).map(s => s.end_time)
     : [];
 
   const hours =
@@ -53,11 +53,6 @@ function CoachBookingForm({ coach }: { coach: Coach }) {
       ? (toMinutes(endTime) - toMinutes(startTime)) / 60
       : 0;
   const total = hours * coach.rate_per_hour;
-
-  const isSlotAvailable = (start: string) => {
-    const slot = availability?.slots.find((s: { start_time: string; is_available: boolean }) => s.start_time === start);
-    return slot?.is_available ?? false;
-  };
 
   const handleBook = () => {
     if (!isAuthenticated()) { setAuthModalOpen(true); return; }
@@ -88,6 +83,16 @@ function CoachBookingForm({ coach }: { coach: Coach }) {
           <h3 className="font-display text-xl font-bold text-court-green uppercase">{coach.name}</h3>
         </div>
 
+        {/* Availability schedule */}
+        <div className="flex flex-col gap-1.5">
+          <p className="text-xs font-display font-semibold tracking-widest uppercase text-court-slate">Availability</p>
+          <WeeklySchedule
+            schedule={coach.schedule}
+            closedLabel="Unavailable"
+            emptyLabel="No availability set yet."
+          />
+        </div>
+
         {/* Date */}
         <div className="flex flex-col gap-1">
           <label className="text-xs font-display font-semibold tracking-widest uppercase text-court-slate">Date</label>
@@ -111,26 +116,29 @@ function CoachBookingForm({ coach }: { coach: Coach }) {
                 <div key={i} className="h-9 rounded-sm bg-gray-100 animate-pulse" />
               ))}
             </div>
+          ) : isClosed ? (
+            <div className="mt-2 py-4 px-4 bg-gray-50 border-2 border-gray-100 rounded-sm">
+              <span className="text-sm font-body text-gray-400">This coach is unavailable on the selected day.</span>
+            </div>
           ) : (
             <div className="grid grid-cols-4 gap-2 mt-2">
-              {TIME_SLOTS.slice(0, -1).map(slot => {
-                const available = isSlotAvailable(slot);
-                const isSelected = startTime === slot;
+              {slots.map(s => {
+                const isSelected = startTime === s.start_time;
                 return (
                   <button
-                    key={slot}
-                    disabled={!available}
-                    onClick={() => { setStartTime(slot); setEndTime(null); }}
+                    key={s.start_time}
+                    disabled={!s.is_available}
+                    onClick={() => { setStartTime(s.start_time); setEndTime(null); }}
                     className={cn(
                       'py-2 text-xs font-display font-bold uppercase rounded-sm transition-all',
                       isSelected
                         ? 'bg-court-green text-court-lime'
-                        : available
+                        : s.is_available
                         ? 'bg-court-lime/20 text-court-green hover:bg-court-lime hover:text-court-green'
                         : 'bg-gray-100 text-gray-300 cursor-not-allowed line-through'
                     )}
                   >
-                    {slot}
+                    {s.start_time}
                   </button>
                 );
               })}

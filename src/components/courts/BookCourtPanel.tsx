@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { ChevronRight } from 'lucide-react';
 import { useEstablishments, useEstablishment } from '@/hooks/useEstablishments';
@@ -9,6 +9,8 @@ import { useCoaches, useCoachAvailability } from '@/hooks/useCoaches';
 import { useAuthStore } from '@/store/authStore';
 import { useUIStore } from '@/store/uiStore';
 import { EstablishmentCard } from '@/components/establishments/EstablishmentCard';
+import { WeeklySchedule } from '@/components/ui/WeeklySchedule';
+import { PhotoLightbox } from '@/components/ui/PhotoLightbox';
 import { CourtCard } from '@/components/courts/CourtCard';
 import { Button } from '@/components/ui/Button';
 import { BookingConfirmedModal } from '@/components/ui/BookingConfirmedModal';
@@ -148,6 +150,9 @@ export function BookCourtPanel() {
   const [addCoach, setAddCoach] = useState(false);
   const [selectedCoach, setSelectedCoach] = useState<Coach | null>(null);
   const [confirmedSummary, setConfirmedSummary] = useState<ConfirmSummary | null>(null);
+  const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
+  const openLightbox = useCallback((i: number) => setLightboxIndex(i), []);
+  const closeLightbox = useCallback(() => setLightboxIndex(null), []);
 
   const { data: establishments, isLoading: loadingEsts } = useEstablishments(locationFilter || undefined);
   const { data: fullEstablishment, isLoading: loadingEst } = useEstablishment(
@@ -159,6 +164,7 @@ export function BookCourtPanel() {
   );
   const { data: coaches } = useCoaches();
 
+  const isClosed: boolean = availability?.closed === true;
   const availableSlots: TimeSlot[] = availability?.slots ?? [];
   const availableStartSlots = availableSlots.filter((s) => s.is_available);
   const endSlots = useMemo(() => {
@@ -291,7 +297,71 @@ export function BookCourtPanel() {
         <h2 className="font-display text-3xl font-bold text-court-green uppercase tracking-tight mb-2">
           Courts at {selectedEstablishment.name}
         </h2>
-        <p className="font-body text-court-slate/60 mb-6">Select a court to check availability.</p>
+        <p className="font-body text-court-slate/60 mb-4">Select a court to check availability.</p>
+
+        {/* Photo gallery */}
+        {(() => {
+          const imgs = fullEstablishment?.images ?? selectedEstablishment.images;
+          if (!imgs.length) return null;
+          const [cover, ...rest] = imgs;
+          return (
+            <div className="mb-6">
+              {rest.length > 0 ? (
+                <div className="w-full h-64 flex gap-0.5 rounded-sm overflow-hidden bg-gray-100">
+                  <button
+                    className="flex-1 overflow-hidden cursor-pointer hover:brightness-90 transition-all"
+                    onClick={() => openLightbox(0)}
+                  >
+                    <img src={cover} alt={selectedEstablishment.name} className="w-full h-full object-cover" />
+                  </button>
+                  <div className={`w-[38%] grid gap-0.5 ${rest.length >= 4 ? 'grid-cols-2 grid-rows-2' : 'grid-cols-1'}`}>
+                    {rest.slice(0, 4).map((url, i) => {
+                      const isLast = i === 3 && imgs.length > 5;
+                      return (
+                        <button
+                          key={url}
+                          className="relative overflow-hidden cursor-pointer hover:brightness-90 transition-all"
+                          onClick={() => openLightbox(i + 1)}
+                        >
+                          <img src={url} alt="" className="w-full h-full object-cover" />
+                          {isLast && (
+                            <div className="absolute inset-0 bg-black/50 flex items-center justify-center pointer-events-none">
+                              <span className="text-white text-xs font-display font-bold">+{imgs.length - 5} more</span>
+                            </div>
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              ) : (
+                <button
+                  className="w-full h-48 rounded-sm overflow-hidden bg-gray-100 cursor-pointer hover:brightness-90 transition-all block"
+                  onClick={() => openLightbox(0)}
+                >
+                  <img src={cover} alt={selectedEstablishment.name} className="w-full h-full object-cover" />
+                </button>
+              )}
+
+              {lightboxIndex !== null && (
+                <PhotoLightbox
+                  images={imgs}
+                  index={lightboxIndex}
+                  onClose={closeLightbox}
+                  onNav={setLightboxIndex}
+                />
+              )}
+            </div>
+          );
+        })()}
+
+        {/* Venue hours */}
+        <div className="mb-6">
+          <p className="text-xs font-display font-semibold tracking-widest uppercase text-court-slate mb-2">
+            Venue Hours
+          </p>
+          <WeeklySchedule schedule={selectedEstablishment.schedule} />
+        </div>
 
         {loadingEst ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -330,6 +400,14 @@ export function BookCourtPanel() {
           {selectedCourt.name} · ₱{selectedCourt.price_per_hour}/hr
         </p>
 
+        {/* Weekly hours */}
+        <div className="mb-6">
+          <p className="text-xs font-display font-semibold tracking-widest uppercase text-court-slate mb-2">
+            Venue Hours
+          </p>
+          <WeeklySchedule schedule={selectedEstablishment?.schedule} />
+        </div>
+
         {/* Date picker */}
         <div className="mb-6">
           <label className="block text-xs font-display font-semibold tracking-widest uppercase text-court-slate mb-1.5">
@@ -353,6 +431,10 @@ export function BookCourtPanel() {
             {loadingSlots ? (
               <div className="grid grid-cols-4 sm:grid-cols-6 gap-2">
                 {[...Array(12)].map((_, i) => <Skeleton key={i} className="h-10" />)}
+              </div>
+            ) : isClosed ? (
+              <div className="flex items-center gap-2 py-4 px-4 bg-gray-50 border-2 border-gray-100 rounded-sm">
+                <span className="text-sm font-body text-gray-400">This venue is closed on the selected day.</span>
               </div>
             ) : (
               <div className="grid grid-cols-4 sm:grid-cols-6 gap-2">
