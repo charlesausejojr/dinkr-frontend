@@ -20,6 +20,8 @@ import { Input } from '@/components/ui/Input';
 import { TagInput } from '@/components/ui/TagInput';
 import { ImageUpload } from '@/components/ui/ImageUpload';
 import { MultiImageUpload } from '@/components/ui/MultiImageUpload';
+import dynamic from 'next/dynamic';
+const MapPicker = dynamic(() => import('@/components/ui/MapPicker').then(m => m.MapPicker), { ssr: false, loading: () => <div className="w-full h-64 rounded-sm border-2 border-gray-200 bg-gray-50 animate-pulse" /> });
 import type { Establishment, Court } from '@/types';
 
 // ── Schemas ───────────────────────────────────────────────────────────────────
@@ -46,8 +48,9 @@ const estSchema = z.object({
   description: z.string().optional(),
   amenities: z.array(z.string()).default([]),
   images: z.array(z.string()).default([]),
-  // Managed by a fully-controlled custom component; bypass Zod's strict nested validation
   schedule: z.any(),
+  latitude: z.number().nullable().optional(),
+  longitude: z.number().nullable().optional(),
 });
 
 const courtSchema = z.object({
@@ -282,6 +285,8 @@ function EstEditForm({ est, onDone }: { est: Establishment; onDone: () => void }
       amenities: est.amenities,
       images: est.images,
       schedule: est.schedule ?? DEFAULT_SCHEDULE,
+      latitude: est.latitude ?? null,
+      longitude: est.longitude ?? null,
     },
   });
 
@@ -331,6 +336,26 @@ function EstEditForm({ est, onDone }: { est: Establishment; onDone: () => void }
           />
         )}
       />
+      <div className="flex flex-col gap-1.5">
+        <label className="text-xs font-display font-semibold tracking-widest uppercase text-court-slate">Pin Location</label>
+        <Controller
+          control={control}
+          name="latitude"
+          render={({ field: latField }) => (
+            <Controller
+              control={control}
+              name="longitude"
+              render={({ field: lngField }) => (
+                <MapPicker
+                  lat={latField.value ?? null}
+                  lng={lngField.value ?? null}
+                  onChange={(lat, lng) => { latField.onChange(lat); lngField.onChange(lng); }}
+                />
+              )}
+            />
+          )}
+        />
+      </div>
       {update.isError && (
         <p className="text-xs text-red-500">Failed to update venue.</p>
       )}
@@ -433,7 +458,7 @@ function CreateEstForm({ onCreated }: { onCreated: (est: Establishment) => void 
   const createEst = useCreateEstablishment();
   const { register, handleSubmit, control, formState: { errors } } = useForm<EstForm>({
     resolver: zodResolver(estSchema) as Resolver<EstForm>,
-    defaultValues: { amenities: [], images: [], schedule: DEFAULT_SCHEDULE },
+    defaultValues: { amenities: [], images: [], schedule: DEFAULT_SCHEDULE, latitude: null, longitude: null },
   });
 
   const onSubmit = (data: EstForm) => {
@@ -489,6 +514,26 @@ function CreateEstForm({ onCreated }: { onCreated: (est: Establishment) => void 
           />
         )}
       />
+      <div className="flex flex-col gap-1.5">
+        <label className="text-xs font-display font-semibold tracking-widest uppercase text-court-slate">Pin Location</label>
+        <Controller
+          control={control}
+          name="latitude"
+          render={({ field: latField }) => (
+            <Controller
+              control={control}
+              name="longitude"
+              render={({ field: lngField }) => (
+                <MapPicker
+                  lat={latField.value ?? null}
+                  lng={lngField.value ?? null}
+                  onChange={(lat, lng) => { latField.onChange(lat); lngField.onChange(lng); }}
+                />
+              )}
+            />
+          )}
+        />
+      </div>
       {createEst.isError && (
         <p className="text-sm text-red-500">
           {(createEst.error as { response?: { data?: { detail?: string } } })?.response?.data?.detail ?? 'Failed to create establishment'}

@@ -15,6 +15,8 @@ export interface Establishment {
   amenities: string[];
   images: string[];
   schedule: WeekSchedule;
+  latitude: number | null;
+  longitude: number | null;
   is_active: boolean;
   created_at: string;
   courts?: Court[];
@@ -57,6 +59,16 @@ export interface Booking {
   status: "pending" | "confirmed" | "cancelled";
   include_coach: boolean;
   created_at: string;
+  // Enriched venue fields
+  court_name: string;
+  establishment_name: string;
+  establishment_location: string;
+  establishment_latitude: number | null;
+  establishment_longitude: number | null;
+  // Enriched coach fields (when include_coach is true)
+  coach_name: string;
+  coach_avatar_url: string | null;
+  coach_bio: string;
 }
 
 export interface CoachBooking {
@@ -69,6 +81,10 @@ export interface CoachBooking {
   total_price: number;
   status: "pending" | "confirmed" | "cancelled";
   created_at: string;
+  // Enriched coach fields
+  coach_name: string;
+  coach_avatar_url: string | null;
+  coach_bio: string;
 }
 
 export interface TimeSlot {

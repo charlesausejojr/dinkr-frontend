@@ -11,6 +11,8 @@ import { useUIStore } from '@/store/uiStore';
 import { EstablishmentCard } from '@/components/establishments/EstablishmentCard';
 import { WeeklySchedule } from '@/components/ui/WeeklySchedule';
 import { PhotoLightbox } from '@/components/ui/PhotoLightbox';
+import dynamic from 'next/dynamic';
+const MapDisplay = dynamic(() => import('@/components/ui/MapDisplay').then(m => m.MapDisplay), { ssr: false, loading: () => <div className="w-full h-56 rounded-sm border-2 border-gray-100 bg-gray-50 animate-pulse" /> });
 import { CourtCard } from '@/components/courts/CourtCard';
 import { Button } from '@/components/ui/Button';
 import { BookingConfirmedModal } from '@/components/ui/BookingConfirmedModal';
@@ -162,7 +164,7 @@ export function BookCourtPanel() {
     selectedCourt?.id ?? null,
     selectedDate || null
   );
-  const { data: coaches } = useCoaches();
+  const { data: coaches, isLoading: loadingCoaches } = useCoaches();
 
   const isClosed: boolean = availability?.closed === true;
   const availableSlots: TimeSlot[] = availability?.slots ?? [];
@@ -355,6 +357,25 @@ export function BookCourtPanel() {
           );
         })()}
 
+        {/* Amenities */}
+        {(fullEstablishment?.amenities ?? selectedEstablishment.amenities).length > 0 && (
+          <div className="mb-6">
+            <p className="text-xs font-display font-semibold tracking-widest uppercase text-court-slate mb-2">
+              Amenities
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {(fullEstablishment?.amenities ?? selectedEstablishment.amenities).map(a => (
+                <span
+                  key={a}
+                  className="px-3 py-1 bg-gray-100 text-court-slate text-xs font-body rounded-full"
+                >
+                  {a}
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* Venue hours */}
         <div className="mb-6">
           <p className="text-xs font-display font-semibold tracking-widest uppercase text-court-slate mb-2">
@@ -362,6 +383,19 @@ export function BookCourtPanel() {
           </p>
           <WeeklySchedule schedule={selectedEstablishment.schedule} />
         </div>
+
+        {/* Location map */}
+        {(() => {
+          const est = fullEstablishment ?? selectedEstablishment;
+          return est.latitude && est.longitude ? (
+            <div className="mb-6">
+              <p className="text-xs font-display font-semibold tracking-widest uppercase text-court-slate mb-2">
+                Location
+              </p>
+              <MapDisplay lat={est.latitude} lng={est.longitude} label={est.name} />
+            </div>
+          ) : null;
+        })()}
 
         {loadingEst ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -546,7 +580,20 @@ export function BookCourtPanel() {
 
           {addCoach && (
             <div className="flex flex-col gap-2">
-              {!coaches?.length ? (
+              {loadingCoaches ? (
+                <>
+                  {[1, 2, 3].map(i => (
+                    <div key={i} className="flex items-center gap-3 p-3 rounded-sm border-2 border-gray-100 animate-pulse">
+                      <div className="w-10 h-10 rounded-full bg-gray-200 shrink-0" />
+                      <div className="flex-1 flex flex-col gap-1.5">
+                        <div className="h-3 w-24 bg-gray-200 rounded" />
+                        <div className="h-2.5 w-36 bg-gray-100 rounded" />
+                      </div>
+                      <div className="h-4 w-12 bg-gray-200 rounded" />
+                    </div>
+                  ))}
+                </>
+              ) : !coaches?.length ? (
                 <p className="text-sm font-body text-court-slate/50">No coaches available.</p>
               ) : (
                 coaches.map((coach) => (

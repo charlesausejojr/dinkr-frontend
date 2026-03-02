@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Barlow_Condensed, DM_Sans } from "next/font/google";
 import { Providers } from "@/components/layout/Providers";
 import "./globals.css";
+import "leaflet/dist/leaflet.css";
 
 const barlow = Barlow_Condensed({
   variable: "--font-barlow",
