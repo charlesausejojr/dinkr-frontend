@@ -13,9 +13,12 @@ export function MapDisplay({ lat, lng, label }: Props) {
   const mapRef = useRef<import('leaflet').Map | null>(null);
 
   useEffect(() => {
-    if (!containerRef.current || mapRef.current) return;
+    if (!containerRef.current) return;
+    let cancelled = false;
 
     import('leaflet').then(L => {
+      if (cancelled || !containerRef.current || mapRef.current) return;
+
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       delete (L.Icon.Default.prototype as any)._getIconUrl;
       L.Icon.Default.mergeOptions({
@@ -38,6 +41,7 @@ export function MapDisplay({ lat, lng, label }: Props) {
     });
 
     return () => {
+      cancelled = true;
       mapRef.current?.remove();
       mapRef.current = null;
     };

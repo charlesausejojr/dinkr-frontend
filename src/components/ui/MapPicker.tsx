@@ -20,11 +20,14 @@ export function MapPicker({ lat, lng, onChange }: Props) {
   const markerRef = useRef<import('leaflet').Marker | null>(null);
 
   useEffect(() => {
-    if (!containerRef.current || mapRef.current) return;
+    if (!containerRef.current) return;
+    let cancelled = false;
 
     // Dynamic import to avoid SSR
     import('leaflet').then(L => {
-      // Fix broken default icon paths bundled by webpack
+      // Abort if the effect was cleaned up before the promise resolved
+      if (cancelled || !containerRef.current || mapRef.current) return;
+
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       delete (L.Icon.Default.prototype as any)._getIconUrl;
       L.Icon.Default.mergeOptions({
@@ -75,6 +78,7 @@ export function MapPicker({ lat, lng, onChange }: Props) {
     });
 
     return () => {
+      cancelled = true;
       mapRef.current?.remove();
       mapRef.current = null;
       markerRef.current = null;

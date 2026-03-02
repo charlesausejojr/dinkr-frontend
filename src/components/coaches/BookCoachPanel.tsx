@@ -27,7 +27,7 @@ interface ConfirmSummary {
 }
 
 // ── Right panel: booking form ─────────────────────────────────────────────────
-function CoachBookingForm({ coach }: { coach: Coach }) {
+function CoachBookingForm({ coach, isOwn }: { coach: Coach; isOwn: boolean }) {
   const { isAuthenticated } = useAuthStore();
   const { setAuthModalOpen } = useUIStore();
   const createBooking = useCreateCoachBooking();
@@ -82,6 +82,15 @@ function CoachBookingForm({ coach }: { coach: Coach }) {
           <p className="text-xs font-display font-semibold tracking-widest uppercase text-court-slate/50 mb-1">Booking</p>
           <h3 className="font-display text-xl font-bold text-court-green uppercase">{coach.name}</h3>
         </div>
+
+        {isOwn && (
+          <div className="flex items-center gap-2.5 bg-court-lime/15 border border-court-lime rounded-sm px-4 py-3">
+            <span className="text-lg">👤</span>
+            <p className="text-sm font-body text-court-green font-semibold">
+              This is your own listing. You cannot book yourself.
+            </p>
+          </div>
+        )}
 
         {/* Availability schedule */}
         <div className="flex flex-col gap-1.5">
@@ -179,11 +188,11 @@ function CoachBookingForm({ coach }: { coach: Coach }) {
             variant="secondary"
             size="lg"
             className="w-full"
-            disabled={!startTime || !endTime}
+            disabled={!startTime || !endTime || isOwn}
             loading={createBooking.isPending}
             onClick={handleBook}
           >
-            Confirm Booking
+            {isOwn ? 'Cannot Book Your Own Listing' : 'Confirm Booking'}
           </Button>
         ) : (
           <Button variant="ghost" size="lg" className="w-full" onClick={() => setAuthModalOpen(true)}>
@@ -211,6 +220,7 @@ function CoachBookingForm({ coach }: { coach: Coach }) {
 export function BookCoachPanel() {
   const { data: coaches, isLoading } = useCoaches();
   const [selected, setSelected] = useState<Coach | null>(null);
+  const user = useAuthStore(s => s.user);
 
   return (
     <div>
@@ -240,6 +250,7 @@ export function BookCoachPanel() {
                 coach={coach}
                 onSelect={c => setSelected(c)}
                 selected={selected?.id === coach.id}
+                isOwn={coach.user_id === user?.id}
               />
             ))}
         </div>
@@ -247,7 +258,7 @@ export function BookCoachPanel() {
         {/* Right: booking form */}
         <div>
           {selected ? (
-            <CoachBookingForm coach={selected} />
+            <CoachBookingForm coach={selected} isOwn={selected.user_id === user?.id} />
           ) : (
             <div className="h-full min-h-[200px] rounded-sm border-2 border-dashed border-gray-200 flex items-center justify-center text-court-slate/30 font-body text-sm">
               Select a coach to see availability →

@@ -1,4 +1,4 @@
-import { useMutation } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 import { useAuthStore } from '@/store/authStore';
 
@@ -28,5 +28,23 @@ export function useLogin() {
       return { token: loginRes.data.access_token, user: meRes.data };
     },
     onSuccess: ({ token, user }) => setAuth(user, token),
+  });
+}
+
+export function useClerkTokenExchange() {
+  const setAuth = useAuthStore(s => s.setAuth);
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (clerkToken: string) => {
+      const res = await api.post('/auth/clerk', { token: clerkToken });
+      const meRes = await api.get('/auth/me', {
+        headers: { Authorization: `Bearer ${res.data.access_token}` },
+      });
+      return { token: res.data.access_token, user: meRes.data };
+    },
+    onSuccess: ({ token, user }) => {
+      setAuth(user, token);
+      queryClient.invalidateQueries();
+    },
   });
 }
