@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
-import { useAuth as useClerkAuth } from "@clerk/nextjs";
+import { useAuth as useClerkAuth, useClerk } from "@clerk/nextjs";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { queryClient } from "@/lib/queryClient";
 import { Toaster } from "@/components/ui/Toaster";
@@ -15,15 +15,18 @@ import { useClerkTokenExchange } from "@/hooks/useAuth";
 function SessionWatcher() {
   const clearAuth = useAuthStore(s => s.clearAuth);
   const setAuthModalOpen = useUIStore(s => s.setAuthModalOpen);
+  const { signOut: clerkSignOut } = useClerk();
 
   useEffect(() => {
     const handler = () => {
       clearAuth();
+      // End the Clerk session too, so the user isn't silently re-logged in.
+      clerkSignOut();
       setAuthModalOpen(true);
     };
     window.addEventListener("dinkr:session-expired", handler);
     return () => window.removeEventListener("dinkr:session-expired", handler);
-  }, [clearAuth, setAuthModalOpen]);
+  }, [clearAuth, setAuthModalOpen, clerkSignOut]);
 
   return null;
 }

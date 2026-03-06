@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import { useClerk } from "@clerk/nextjs";
 import { useAuthStore } from "@/store/authStore";
 import { useUIStore } from "@/store/uiStore";
 import { Button } from "@/components/ui/Button";
@@ -8,6 +9,14 @@ import { Button } from "@/components/ui/Button";
 export function Navbar() {
   const { user, clearAuth, isAuthenticated } = useAuthStore();
   const { setAuthModalOpen } = useUIStore();
+  const { signOut: clerkSignOut } = useClerk();
+
+  const handleSignOut = () => {
+    clearAuth();
+    // Also end the Clerk session so ClerkAuthSync doesn't immediately
+    // re-authenticate the user with the previous Google account.
+    clerkSignOut();
+  };
 
   return (
     <nav className="sticky top-0 z-30 bg-court-green text-white px-6 py-3 flex items-center justify-between shadow-md">
@@ -38,7 +47,7 @@ export function Navbar() {
             <Button
               variant="ghost"
               size="sm"
-              onClick={clearAuth}
+              onClick={handleSignOut}
               className="border-white/40 text-white hover:bg-white/10 hover:text-white"
             >
               Sign Out
